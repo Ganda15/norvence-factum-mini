@@ -8,6 +8,7 @@ dependencies = []
 [dependency-groups]
 dev = [
     "pytest>=8,<9",
+    "pytest-cov>=5,<8",
     "ruff>=0.6,<0.10",
 ]
 
@@ -20,6 +21,14 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 85  # 90 % mesure avec tous les tests, 73 % sans test_normalize.py : 85 laisse une marge et fait echouer la CI si les tests disparaissent
+show_missing = true
 
 [tool.ruff]
 line-length = 100
