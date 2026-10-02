@@ -1,10 +1,33 @@
-# Couverture de tests : notes de travail
+# Couverture de tests dans la CI
 
 ## Pourquoi la CI était verte pendant l'incident
 
 - Sur le dépôt actuel, les tests ne contiennent aucun montant avec une virgule : la ligne du `if` est exécutée (73 % de lignes), mais la branche « virgule » ne l'est jamais (70 % en branches), et sans `--cov-branch` personne ne le voyait.
 - Le test `test_normalize_numeric_input` n'a aucun `assert` : il ne peut pas échouer mais il compte comme couverture (sans lui, on passe de 70 % à 65 %), donc la couverture mesure le code exécuté et non le code vérifié.
 - La CI ne mesurait pas la couverture et aucun seuil `fail_under` n'existait : le correctif (commit `733060e`) a modifié `app/normalize.py` sans ajouter de test, et rien ne pouvait faire passer la CI au rouge.
+
+## Seuil retenu et commande de mesure
+
+Le seuil est `fail_under = 85`. Il est défini dans `pyproject.toml`, section `[tool.coverage.report]`, et nulle part ailleurs : la CI et ma machine appliquent donc la même règle.
+
+Pourquoi 85 : avec tous les tests, la couverture totale est de 90,22 %. Sans `tests/test_normalize.py`, elle tombe à 72,83 %. Le seuil doit rester vert pour un changement ordinaire et passer au rouge si les tests disparaissent, donc il se place entre les deux, avec 5 points de marge sous la valeur réelle. Je n'ai pas visé 100 % : Fowler y voit le signe de tests écrits pour le chiffre, et ce seuil sert de filet de sécurité, pas de preuve de qualité.
+
+Preuve dans la CI :
+
+- [PR 1](https://github.com/Ganda15/norvence-factum-mini/pull/1), verte : `Required test coverage of 85.0% reached. Total coverage: 90.22%`.
+- [PR 2](https://github.com/Ganda15/norvence-factum-mini/pull/2), qui supprime le fichier de tests, rouge : `FAIL Required test coverage of 85.0% not reached. Total coverage: 72.83%`. Elle a été fermée sans fusion, car elle ne sert qu'à cette démonstration.
+
+Commande pour mesurer en local (la même que dans la CI) :
+
+    uv run pytest --cov=app --cov-branch
+
+Le tableau liste les lignes non couvertes dans la colonne `Missing` (option `show_missing = true`).
+
+Limites :
+
+- Le seuil mesure la couverture, pas la qualité des tests.
+- La couverture des conditions n'est pas mesurée (le `and` de la ligne 29 de `app/normalize.py`).
+- La classe `HttpLLMClient` n'est pas testée (`llm_client.py` reste à 71 %) et je ne l'ai pas exclue de la mesure.
 
 ## Mesure initiale de `app/normalize.py` (02/10/2026)
 
@@ -33,7 +56,7 @@ Mesure faite sans toucher au fichier de tests, avec l'option `--deselect` :
 
 ## Les options `fail_under`, `omit` et `exclude_lines`
 
-- `fail_under` : pourcentage minimum. Si la couverture totale est en dessous, la commande s'arrête avec le code 2 et la CI passe au rouge. Elle ne change pas la mesure, elle sert de garde-fou.
+- `fail_under` : pourcentage minimum. Si la couverture totale est en dessous, la commande échoue (code 2 pour coverage.py, code 1 quand elle est lancée par pytest) et la CI passe au rouge. Elle ne change pas la mesure, elle sert de garde-fou.
 - `omit` : liste de fichiers retirés de la mesure.
 - `exclude_lines` : liste d'expressions régulières. Les lignes qui correspondent, et le bloc qu'elles introduisent, ne sont plus comptées comme manquantes.
 
